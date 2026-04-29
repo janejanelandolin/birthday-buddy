@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Birthday Buddy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎂 Birthday Buddy</h1>
+      <p class="subtitle">Schedule birthday SMS campaigns effortlessly</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="single">Single Entry</button>
+      <button class="tab" data-tab="upload">Spreadsheet Upload</button>
+    </div>
+
+    <!-- Single Entry Form -->
+    <section id="single" class="tab-panel active">
+      <form id="single-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input type="text" id="first_name" name="first_name" required placeholder="Jane" />
+          </div>
+          <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" id="last_name" name="last_name" required placeholder="Smith" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="birthday">Birthday</label>
+            <input type="date" id="birthday" name="birthday" required />
+          </div>
+          <div class="form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="tel" id="phone_number" name="phone_number" required placeholder="(555) 555-5555" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="3" placeholder="Happy Birthday [First Name]! - from your friends at Birthday Buddy"></textarea>
+          <span class="hint">Leave blank to use the default message</span>
+        </div>
+        <button type="submit" class="btn-primary">Add Contact</button>
+      </form>
+    </section>
+
+    <!-- Spreadsheet Upload -->
+    <section id="upload" class="tab-panel">
+      <div class="upload-info">
+        <p>Upload a <strong>CSV</strong> or <strong>XLSX</strong> file with the following columns:</p>
+        <code>First Name, Last Name, Birthday, Phone Number, Message (optional)</code>
+        <p class="hint">Date formats accepted: <em>MM/DD/YYYY</em>, <em>YYYY-MM-DD</em>, <em>MM-DD-YYYY</em></p>
+      </div>
+      <form id="upload-form">
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-icon">📁</div>
+          <p>Drag & drop your file here, or <label for="file-input" class="file-label">browse</label></p>
+          <input type="file" id="file-input" name="file" accept=".csv,.xlsx,.xls" hidden />
+          <p id="file-name" class="file-name"></p>
+        </div>
+        <button type="submit" class="btn-primary" disabled id="upload-btn">Upload & Schedule</button>
+      </form>
+    </section>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Contacts Table -->
+    <section class="contacts-section">
+      <div class="contacts-header">
+        <h2>Scheduled Contacts</h2>
+        <button class="btn-secondary" id="refresh-btn">Refresh</button>
+      </div>
+      <div id="contacts-table-wrap">
+        <table id="contacts-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Birthday</th>
+              <th>Phone</th>
+              <th>Message</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="contacts-body">
+            <tr><td colspan="5" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
