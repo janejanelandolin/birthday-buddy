@@ -238,6 +238,24 @@ tbody tr:hover { background: #fafafa; }
   white-space: nowrap;
 }
 
+.actions-cell { white-space: nowrap; }
+.actions-col { width: 1%; }
+
+.send-btn {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 5px;
+  margin-right: 0.4rem;
+  transition: background 0.15s;
+}
+.send-btn:hover:not(:disabled) { background: #6d28d9; }
+.send-btn:disabled { background: #c4b5fd; cursor: not-allowed; }
+
 .delete-btn {
   background: none;
   border: none;

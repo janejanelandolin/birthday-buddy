@@ -162,6 +162,22 @@ app.get('/api/contacts', (req, res) => {
   res.json(contacts);
 });
 
+// Send now
+app.post('/api/contacts/:id/send', async (req, res) => {
+  const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  if (!contact) return res.status(404).json({ error: 'Contact not found' });
+  try {
+    await twilioClient.messages.create({
+      body: contact.message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: contact.phone_number,
+    });
+    res.json({ message: `Message sent to ${contact.first_name} ${contact.last_name}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete a contact
 app.delete('/api/contacts/:id', (req, res) => {
   db.prepare('DELETE FROM sent_log WHERE contact_id = ?').run(req.params.id);

@@ -38,7 +38,10 @@ async function loadContacts() {
         <td>${formatBirthday(c.birthday)}</td>
         <td>${escHtml(c.phone_number)}</td>
         <td class="msg-cell" title="${escHtml(c.message)}">${escHtml(c.message)}</td>
-        <td><button class="delete-btn" onclick="deleteContact(${c.id})" title="Remove">✕</button></td>
+        <td class="actions-cell">
+          <button class="send-btn" onclick="sendNow(${c.id}, this)" title="Send now">Send Now</button>
+          <button class="delete-btn" onclick="deleteContact(${c.id})" title="Remove">✕</button>
+        </td>
       </tr>
     `).join('');
   } catch {
@@ -52,6 +55,26 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+async function sendNow(id, btn) {
+  if (!confirm('Send this message immediately?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const res = await fetch(`/api/contacts/${id}/send`, { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      showToast(json.message);
+    } else {
+      showToast(json.error || 'Failed to send', 'error');
+    }
+  } catch {
+    showToast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Now';
+  }
 }
 
 async function deleteContact(id) {
