@@ -156,9 +156,16 @@ app.post('/api/contacts/upload', upload.single('file'), async (req, res) => {
   res.json(results);
 });
 
-// List all contacts
+// List all contacts with latest send status
 app.get('/api/contacts', (req, res) => {
-  const contacts = db.prepare('SELECT * FROM contacts ORDER BY created_at DESC').all();
+  const contacts = db.prepare(`
+    SELECT c.*,
+      s.sent_at, s.message_body AS sent_message, s.error AS send_error, s.year AS sent_year
+    FROM contacts c
+    LEFT JOIN sent_log s ON s.contact_id = c.id
+      AND s.id = (SELECT id FROM sent_log WHERE contact_id = c.id ORDER BY sent_at DESC LIMIT 1)
+    ORDER BY c.created_at DESC
+  `).all();
   res.json(contacts);
 });
 
@@ -166,14 +173,27 @@ app.get('/api/contacts', (req, res) => {
 app.post('/api/contacts/:id/send', async (req, res) => {
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
+  const year = new Date().getFullYear();
   try {
     await twilioClient.messages.create({
       body: contact.message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: contact.phone_number,
     });
+    db.prepare(`
+      INSERT INTO sent_log (contact_id, year, message_body, error)
+      VALUES (?, ?, ?, NULL)
+      ON CONFLICT(contact_id, year) DO UPDATE SET
+        sent_at = datetime('now'), message_body = excluded.message_body, error = NULL
+    `).run(contact.id, year, contact.message);
     res.json({ message: `Message sent to ${contact.first_name} ${contact.last_name}` });
   } catch (err) {
+    db.prepare(`
+      INSERT INTO sent_log (contact_id, year, message_body, error)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(contact_id, year) DO UPDATE SET
+        sent_at = datetime('now'), message_body = excluded.message_body, error = excluded.error
+    `).run(contact.id, year, contact.message, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -207,9 +227,20 @@ cron.schedule('0 9 * * *', async () => {
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone_number,
       });
-      db.prepare('INSERT OR IGNORE INTO sent_log (contact_id, year) VALUES (?, ?)').run(contact.id, year);
+      db.prepare(`
+        INSERT INTO sent_log (contact_id, year, message_body, error)
+        VALUES (?, ?, ?, NULL)
+        ON CONFLICT(contact_id, year) DO UPDATE SET
+          sent_at = datetime('now'), message_body = excluded.message_body, error = NULL
+      `).run(contact.id, year, contact.message);
       console.log(`Sent birthday message to ${contact.first_name} ${contact.last_name} (${contact.phone_number})`);
     } catch (err) {
+      db.prepare(`
+        INSERT INTO sent_log (contact_id, year, message_body, error)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(contact_id, year) DO UPDATE SET
+          sent_at = datetime('now'), message_body = excluded.message_body, error = excluded.error
+      `).run(contact.id, year, contact.message, err.message);
       console.error(`Failed to send to ${contact.phone_number}:`, err.message);
     }
   }

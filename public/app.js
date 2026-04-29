@@ -38,6 +38,7 @@ async function loadContacts() {
         <td>${formatBirthday(c.birthday)}</td>
         <td>${escHtml(c.phone_number)}</td>
         <td class="msg-cell" title="${escHtml(c.message)}">${escHtml(c.message)}</td>
+        <td>${renderStatus(c)}</td>
         <td class="actions-cell">
           <button class="send-btn" onclick="sendNow(${c.id}, this)" title="Send now">Send Now</button>
           <button class="delete-btn" onclick="deleteContact(${c.id})" title="Remove">✕</button>
@@ -47,6 +48,25 @@ async function loadContacts() {
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load contacts.</td></tr>';
   }
+}
+
+function renderStatus(c) {
+  if (!c.sent_at) {
+    return `<span class="badge badge-scheduled">Scheduled</span>`;
+  }
+  if (c.send_error) {
+    return `<span class="badge badge-failed" title="${escHtml(c.send_error)}">Failed</span>
+            <div class="status-detail error-detail">${escHtml(c.send_error)}</div>`;
+  }
+  const sentDate = new Date(c.sent_at + 'Z');
+  const formatted = sentDate.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+  const preview = c.sent_message ? escHtml(c.sent_message) : '';
+  return `<span class="badge badge-sent">Sent</span>
+          <div class="status-detail">${formatted}</div>
+          ${preview ? `<div class="status-msg" title="${preview}">${preview}</div>` : ''}`;
 }
 
 function escHtml(str) {
