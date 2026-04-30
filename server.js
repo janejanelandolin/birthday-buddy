@@ -156,7 +156,7 @@ app.post('/api/contacts/upload', upload.single('file'), async (req, res) => {
   res.json(results);
 });
 
-// List all contacts with latest send status
+// List all contacts with latest scheduled status
 app.get('/api/contacts', (req, res) => {
   const contacts = db.prepare(`
     SELECT c.*,
@@ -169,13 +169,21 @@ app.get('/api/contacts', (req, res) => {
   res.json(contacts);
 });
 
+// Send log for a contact
+app.get('/api/contacts/:id/attempts', (req, res) => {
+  const attempts = db.prepare(`
+    SELECT * FROM send_attempts WHERE contact_id = ? ORDER BY attempted_at DESC
+  `).all(req.params.id);
+  res.json(attempts);
+});
+
 // Send now
 app.post('/api/contacts/:id/send', async (req, res) => {
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
   const year = new Date().getFullYear();
   try {
-    await twilioClient.messages.create({
+    const msg = await twilioClient.messages.create({
       body: contact.message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: contact.phone_number,
@@ -186,6 +194,10 @@ app.post('/api/contacts/:id/send', async (req, res) => {
       ON CONFLICT(contact_id, year) DO UPDATE SET
         sent_at = datetime('now'), message_body = excluded.message_body, error = NULL
     `).run(contact.id, year, contact.message);
+    db.prepare(`
+      INSERT INTO send_attempts (contact_id, trigger, success, message_body, twilio_sid)
+      VALUES (?, 'manual', 1, ?, ?)
+    `).run(contact.id, contact.message, msg.sid);
     res.json({ message: `Message sent to ${contact.first_name} ${contact.last_name}` });
   } catch (err) {
     db.prepare(`
@@ -194,6 +206,10 @@ app.post('/api/contacts/:id/send', async (req, res) => {
       ON CONFLICT(contact_id, year) DO UPDATE SET
         sent_at = datetime('now'), message_body = excluded.message_body, error = excluded.error
     `).run(contact.id, year, contact.message, err.message);
+    db.prepare(`
+      INSERT INTO send_attempts (contact_id, trigger, success, message_body, error)
+      VALUES (?, 'manual', 0, ?, ?)
+    `).run(contact.id, contact.message, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -201,6 +217,7 @@ app.post('/api/contacts/:id/send', async (req, res) => {
 // Delete a contact
 app.delete('/api/contacts/:id', (req, res) => {
   db.prepare('DELETE FROM sent_log WHERE contact_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM send_attempts WHERE contact_id = ?').run(req.params.id);
   db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.id);
   res.json({ message: 'Contact deleted' });
 });
@@ -222,7 +239,7 @@ cron.schedule('0 9 * * *', async () => {
 
   for (const contact of contacts) {
     try {
-      await twilioClient.messages.create({
+      const msg = await twilioClient.messages.create({
         body: contact.message,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: contact.phone_number,
@@ -233,8 +250,16 @@ cron.schedule('0 9 * * *', async () => {
         ON CONFLICT(contact_id, year) DO UPDATE SET
           sent_at = datetime('now'), message_body = excluded.message_body, error = NULL
       `).run(contact.id, year, contact.message);
+      db.prepare(`
+        INSERT INTO send_attempts (contact_id, trigger, success, message_body, twilio_sid)
+        VALUES (?, 'scheduled', 1, ?, ?)
+      `).run(contact.id, contact.message, msg.sid);
       console.log(`Sent birthday message to ${contact.first_name} ${contact.last_name} (${contact.phone_number})`);
     } catch (err) {
+      db.prepare(`
+        INSERT INTO send_attempts (contact_id, trigger, success, message_body, error)
+        VALUES (?, 'scheduled', 0, ?, ?)
+      `).run(contact.id, contact.message, err.message);
       db.prepare(`
         INSERT INTO sent_log (contact_id, year, message_body, error)
         VALUES (?, ?, ?, ?)

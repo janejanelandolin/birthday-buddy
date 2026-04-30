@@ -23,14 +23,21 @@ db.exec(`
     error TEXT,
     UNIQUE(contact_id, year)
   );
+
+  CREATE TABLE IF NOT EXISTS send_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contact_id INTEGER NOT NULL,
+    attempted_at TEXT DEFAULT (datetime('now')),
+    trigger TEXT NOT NULL,
+    success INTEGER NOT NULL DEFAULT 0,
+    message_body TEXT,
+    twilio_sid TEXT,
+    error TEXT
+  );
 `);
 
-// Migrate existing sent_log table if columns are missing
-try {
-  db.exec(`ALTER TABLE sent_log ADD COLUMN message_body TEXT`);
-} catch {}
-try {
-  db.exec(`ALTER TABLE sent_log ADD COLUMN error TEXT`);
-} catch {}
+// Migrate sent_log columns if missing (existing deployments)
+try { db.exec(`ALTER TABLE sent_log ADD COLUMN message_body TEXT`); } catch {}
+try { db.exec(`ALTER TABLE sent_log ADD COLUMN error TEXT`); } catch {}
 
 module.exports = db;

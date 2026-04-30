@@ -298,6 +298,76 @@ tbody tr:hover { background: #fafafa; }
 }
 .delete-btn:hover { background: #fee2e2; }
 
+/* Send log */
+.log-btn {
+  background: none;
+  border: 1.5px solid #ddd6fe;
+  color: #7c3aed;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.log-btn:hover { background: #f5f3ff; }
+
+.log-row { background: #fafafa; }
+.log-cell { padding: 0 !important; }
+.log-content { padding: 1rem 1.5rem; }
+.log-empty { color: #9ca3af; font-size: 0.875rem; }
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.log-table th {
+  background: #f3f4f6;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e5e7eb;
+}
+.log-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+  color: #374151;
+}
+.log-table tbody tr:last-child td { border-bottom: none; }
+.log-success { background: #f0fdf4; }
+.log-fail    { background: #fff5f5; }
+
+.trigger-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.trigger-manual    { background: #ede9fe; color: #5b21b6; }
+.trigger-scheduled { background: #dbeafe; color: #1e40af; }
+
+.log-msg {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-sid code {
+  font-size: 0.72rem;
+  background: #f3f4f6;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  color: #374151;
+}
+.log-error { color: #dc2626; max-width: 220px; }
+
 /* Toast */
 .toast {
   position: fixed;

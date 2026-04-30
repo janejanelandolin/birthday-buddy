@@ -29,7 +29,7 @@ async function loadContacts() {
     const res = await fetch('/api/contacts');
     const contacts = await res.json();
     if (!contacts.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No contacts yet. Add one above!</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">No contacts yet. Add one above!</td></tr>';
       return;
     }
     tbody.innerHTML = contacts.map((c) => `
@@ -39,14 +39,20 @@ async function loadContacts() {
         <td>${escHtml(c.phone_number)}</td>
         <td class="msg-cell" title="${escHtml(c.message)}">${escHtml(c.message)}</td>
         <td>${renderStatus(c)}</td>
+        <td><button class="log-btn" onclick="toggleLog(${c.id}, this)">▶ View</button></td>
         <td class="actions-cell">
           <button class="send-btn" onclick="sendNow(${c.id}, this)" title="Send now">Send Now</button>
           <button class="delete-btn" onclick="deleteContact(${c.id})" title="Remove">✕</button>
         </td>
       </tr>
+      <tr class="log-row" id="log-row-${c.id}" style="display:none">
+        <td colspan="7" class="log-cell">
+          <div id="log-content-${c.id}" class="log-content">Loading...</div>
+        </td>
+      </tr>
     `).join('');
   } catch {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load contacts.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Failed to load contacts.</td></tr>';
   }
 }
 
@@ -77,6 +83,56 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+async function toggleLog(id, btn) {
+  const row = document.getElementById(`log-row-${id}`);
+  const content = document.getElementById(`log-content-${id}`);
+  const isOpen = row.style.display !== 'none';
+  if (isOpen) {
+    row.style.display = 'none';
+    btn.textContent = '▶ View';
+    return;
+  }
+  row.style.display = '';
+  btn.textContent = '▼ Hide';
+  content.textContent = 'Loading...';
+  try {
+    const res = await fetch(`/api/contacts/${id}/attempts`);
+    const attempts = await res.json();
+    if (!attempts.length) {
+      content.innerHTML = '<p class="log-empty">No send attempts yet.</p>';
+      return;
+    }
+    content.innerHTML = `
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Trigger</th>
+            <th>Result</th>
+            <th>Message Sent</th>
+            <th>Twilio SID</th>
+            <th>Failure Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${attempts.map((a) => `
+            <tr class="${a.success ? 'log-success' : 'log-fail'}">
+              <td>${new Date(a.attempted_at + 'Z').toLocaleString()}</td>
+              <td><span class="trigger-badge trigger-${a.trigger}">${a.trigger}</span></td>
+              <td>${a.success ? '<span class="badge badge-sent">Sent</span>' : '<span class="badge badge-failed">Failed</span>'}</td>
+              <td class="log-msg" title="${escHtml(a.message_body || '')}">${escHtml(a.message_body || '—')}</td>
+              <td class="log-sid">${a.twilio_sid ? `<code>${escHtml(a.twilio_sid)}</code>` : '—'}</td>
+              <td class="log-error">${a.error ? escHtml(a.error) : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch {
+    content.innerHTML = '<p class="log-empty">Failed to load log.</p>';
+  }
+}
+
 async function sendNow(id, btn) {
   if (!confirm('Send this message immediately?')) return;
   btn.disabled = true;
@@ -89,6 +145,15 @@ async function sendNow(id, btn) {
     } else {
       showToast(json.error || 'Failed to send', 'error');
     }
+    // Refresh log row if it's open
+    const logRow = btn.closest('tr').nextElementSibling;
+    if (logRow && logRow.style.display !== 'none') {
+      const contactId = id;
+      const logBtn = btn.closest('tr').querySelector('.log-btn');
+      toggleLog(contactId, logBtn);
+      toggleLog(contactId, logBtn);
+    }
+    loadContacts();
   } catch {
     showToast('Network error', 'error');
   } finally {
